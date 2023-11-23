@@ -6,7 +6,7 @@ fs_permissions = [{ access = "read", path = "./"}]
 optimizer = true
 optimizer_runs = 1
 gas_reports = ["*"]
-solc = "0.8.15"
+solc = "0.8.20"
 
 
 [etherscan]

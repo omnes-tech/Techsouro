@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.20;
 
 import "@erc721a/ERC721A.sol";
 
@@ -14,12 +14,16 @@ contract tesouroDireto is ERC721A{
     error NotKYCed();
     error NotEmitter();
     error NotValidTreasuryType();
+    error notOpenMarket(address _sender);
 
     //-----------------------------------------------------------------------------------------------
     //
     //                                      EVENTS
     //
     //-----------------------------------------------------------------------------------------------
+
+    event treasuryCreated(uint256 indexed _totalValue, uint256 indexed _apy, uint256 indexed _duration, treasuryType);
+    event notOpenMarketContract(address indexed _sender);
 
     //-----------------------------------------------------------------------------------------------
     //
@@ -44,16 +48,17 @@ contract tesouroDireto is ERC721A{
     }
 
     address public emitter; //Union wallet
-    mapping (address => bool) public buyer; //KYC Users
-    mapping (uint256 => uint256) public certificateToToken; //ERC721A to ERC1155
+    address public openMarket;
+    mapping (uint256 => treasuryData) public tokenInfo; //ERC721A to ERC1155
 
     //-----------------------------------------------------------------------------------------------
     //
     //                                      CONSTRUCTOR
     //
     //-----------------------------------------------------------------------------------------------
-    constructor(string memory _name, string memory _symbol) ERC721A(_name,_symbol){
-        emitter == msg.sender;
+    constructor(string memory _name, string memory _symbol, address _openMarket) ERC721A(_name,_symbol){
+        emitter = msg.sender;
+        openMarket = _openMarket;
     }
 
 
@@ -63,29 +68,33 @@ contract tesouroDireto is ERC721A{
     //
     //-----------------------------------------------------------------------------------------------
 
-    function KYC(address _KYCed) public onlyEmitter{
-        buyer[_KYCed] = true;
-    }
-
-    function emitTreasury(address _buyer, treasuryData memory _data) public KYCcheck(_buyer) onlyEmitter{
+    function emitTreasury(treasuryData memory _data) public onlyEmitter{
         if (_data._type == treasuryType.LTN){
-            ERC721A._mint(_buyer, 1);
+            ERC721A._mint(openMarket, 1);
             ERC721A._setExtraDataAt(ERC721A._nextTokenId(), _data._apy);
         }else if(_data._type == treasuryType.NTN_F){
-            ERC721A._mint(_buyer, 1);
+            ERC721A._mint(openMarket, 1);
             ERC721A._setExtraDataAt(ERC721A._nextTokenId(), _data._apy);
         }else if(_data._type == treasuryType.LFT){
-            ERC721A._mint(_buyer, 1);
+            ERC721A._mint(openMarket, 1);
             ERC721A._setExtraDataAt(ERC721A._nextTokenId(), _data._apy);
         }else if(_data._type == treasuryType.NTN_B_MAIN){
-            ERC721A._mint(_buyer, 1);
+            ERC721A._mint(openMarket, 1);
             ERC721A._setExtraDataAt(ERC721A._nextTokenId(), _data._apy);
         }else if(_data._type == treasuryType.NTN_B){
-            ERC721A._mint(_buyer, 1);
+            ERC721A._mint(openMarket, 1);
             ERC721A._setExtraDataAt(ERC721A._nextTokenId(), _data._apy);
         }else{
             revert NotValidTreasuryType();
         }
+        tokenInfo[_nextTokenId() - 1] = _data;
+        emit treasuryCreated(_data._avlbTokens*_data._minInvestment, _data._apy, _data._validThru, _data._type);
+    }
+
+    function retriveInvestment(uint256 _tokenId, uint256 _amount) external returns(bool){
+        if(msg.sender != openMarket) revert notOpenMarket(msg.sender);
+
+
     }
 
     //-----------------------------------------------------------------------------------------------
@@ -105,6 +114,18 @@ contract tesouroDireto is ERC721A{
 
     //-----------------------------------------------------------------------------------------------
     //
+    //                                      GETTER FUNCTIONS
+    //
+    //-----------------------------------------------------------------------------------------------
+
+    function getPriceAmount(uint256 _tokenId) external view returns(uint256 _price, uint256 _amount){
+        _price = tokenInfo[_tokenId]._minInvestment;
+        _amount = tokenInfo[_tokenId]._avlbTokens;
+    }
+
+
+    //-----------------------------------------------------------------------------------------------
+    //
     //                                      MODIFIERS
     //
     //-----------------------------------------------------------------------------------------------
@@ -115,13 +136,6 @@ contract tesouroDireto is ERC721A{
         _;
     }
 
-    modifier KYCed() {
-        if(!buyer[msg.sender]) revert NotKYCed();
-        _;
-    }
-    modifier KYCcheck(address _check) {
-        if(!buyer[_check]) revert NotKYCed();
-        _;
-    }
+    
     
 }
