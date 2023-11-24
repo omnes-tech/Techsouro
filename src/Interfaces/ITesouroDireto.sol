@@ -6,5 +6,5 @@ interface ITesouroDireto {
 
     function getPriceAmount(uint256 _tokenId) external view returns(uint256 _price, uint256 _amount);
 
-    function retriveInvestment(uint256 _tokenId, uint256 _amount) external returns(bool);
+    function retriveFullInvestment(uint256 _tokenId, uint256 _amount) external returns(bool);
 }

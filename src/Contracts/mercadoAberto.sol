@@ -3,13 +3,14 @@ pragma solidity ^0.8.20;
 
 
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
+import "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "../Interfaces/ITesouroDireto.sol";
 
 
-contract openMarket is Ownable, IERC721Receiver, ERC1155 {
+contract openMarket is Ownable, ERC1155, ERC1155Holder, IERC721Receiver {
 
     //-----------------------------------------------------------------------------------------------
     //
@@ -59,6 +60,7 @@ contract openMarket is Ownable, IERC721Receiver, ERC1155 {
     constructor(string memory _uri, address _payment, address __union) ERC1155(_uri) Ownable(msg.sender){
         _wDREX = IERC20(_payment);
         _union = __union;
+        KYC(msg.sender);
     }
 
     //-----------------------------------------------------------------------------------------------
@@ -82,7 +84,7 @@ contract openMarket is Ownable, IERC721Receiver, ERC1155 {
 
         if(!_wDREX.transferFrom(msg.sender, _union, _amount*_price)) revert paymentNotMade();
 
-        safeTransferFrom(address(this), msg.sender, _tokenId, _amount, "");
+        _safeTransferFrom(address(this), msg.sender, _tokenId, _amount, "");
 
         emit primarySale(msg.sender, _tokenId, _amount);
     }
@@ -101,10 +103,11 @@ contract openMarket is Ownable, IERC721Receiver, ERC1155 {
         uint256 _price = secondaryMarket[_tokenId][_seller]._price * _units;
         require(_wDREX.balanceOf(msg.sender) >= _price, "mercadoAberto : Not enough money");
         require(_wDREX.allowance(msg.sender, address(this)) >= _price, "mercadoAberto : Allowance not enough");
+        require(isApprovedForAll(_seller, address(this)), "mercadoAberto : Selelr Not approved for all");
 
         if(!_wDREX.transferFrom(msg.sender, _seller, _price)) revert paymentNotMade();
 
-        safeTransferFrom(_seller, msg.sender, _tokenId, _price, "");
+        _safeTransferFrom(_seller, msg.sender, _tokenId, _units, "");
 
         emit secondarySold(_seller, msg.sender, _units, _price, _tokenId);
         
@@ -115,7 +118,7 @@ contract openMarket is Ownable, IERC721Receiver, ERC1155 {
         require(isApprovedForAll(msg.sender, address(this)), "mercadoAberto : Not approved for contract");
         
         _burn(msg.sender, _tokenId, _amount);
-        if(!_treasury.retriveInvestment(_tokenId, _amount)) revert retrievalFailed(msg.sender,_tokenId,_amount);
+        if(!_treasury.retriveFullInvestment(_tokenId, _amount)) revert retrievalFailed(msg.sender,_tokenId,_amount);
 
         emit retrievalsucceed(msg.sender, _tokenId, _amount);
     }
@@ -139,6 +142,20 @@ contract openMarket is Ownable, IERC721Receiver, ERC1155 {
 
     //-----------------------------------------------------------------------------------------------
     //
+    //                                 GETTER FUNCTIONS
+    //
+    //-----------------------------------------------------------------------------------------------
+
+    function getOpenBuy(uint256 _tokenId) external view returns(uint256, uint256){
+        return(openBuy[_tokenId]._avlb,openBuy[_tokenId]._price);
+    }
+
+    function getSecondaryMarket(uint256 _tokenId, address _seller) external view returns(uint256, uint256){
+        return(secondaryMarket[_tokenId][_seller]._avlb,secondaryMarket[_tokenId][_seller]._price);
+    }
+
+    //-----------------------------------------------------------------------------------------------
+    //
     //                                      INHERITANCE
     //
     //-----------------------------------------------------------------------------------------------
@@ -147,6 +164,14 @@ contract openMarket is Ownable, IERC721Receiver, ERC1155 {
     function onERC721Received(address operator, address from, uint256 tokenId, bytes calldata data) public override returns (bytes4) {
         _createPublicOffer(tokenId);
         return this.onERC721Received.selector;
+    }
+
+    function supportsInterface(bytes4 interfaceId) public view override(ERC1155,ERC1155Holder) returns (bool) {
+        return
+            interfaceId == type(IERC1155).interfaceId ||
+            interfaceId == type(IERC1155MetadataURI).interfaceId ||
+            interfaceId == type(IERC1155Receiver).interfaceId ||
+            super.supportsInterface(interfaceId);
     }
 
 
