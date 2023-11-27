@@ -27,7 +27,7 @@ contract openMarket is Ownable, ERC1155, ERC1155Holder, IERC721Receiver {
     //
     //-----------------------------------------------------------------------------------------------
     
-    event publicOrderCreated(uint256 indexed _tokenId);
+    event publicOrderCreated(uint256 indexed _tokenId,uint256 indexed _price, uint256 indexed _available);
     event primarySale(address indexed _sender, uint256 indexed _tokenId, uint256 indexed _amount);
     event retrievalsucceed(address _sender,uint256 _tokenId,uint256 _amount);
     event secondaryForSale(address indexed _seller, uint256 indexed _tokenId, uint256 indexed _units, uint256 _price);
@@ -135,7 +135,7 @@ contract openMarket is Ownable, ERC1155, ERC1155Holder, IERC721Receiver {
         _mint(address(this), _tokenId, _available, "");
         openBuy[_tokenId] = buyInfo({_price: _price,_avlb: _available});
 
-        emit publicOrderCreated(_tokenId);
+        emit publicOrderCreated(_tokenId, _price, _available);
     }
 
 
